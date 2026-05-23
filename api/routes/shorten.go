@@ -1,16 +1,18 @@
 package routes
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"strconv"
 	"time"
 	"url-shortener-go/database"
 	"url-shortener-go/helpers"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/asaskevich/govalidator"
 )
 
 type request struct {
@@ -57,9 +59,13 @@ func CheckRateLimit(c *fiber.Ctx) (int, time.Duration, error) {
 func ShortenURL(c *fiber.Ctx) error {
 	body := new(request)
 
-	if err := c.BodyParser(&body); err != nil {
+	// validate the request body
+	decoder := json.NewDecoder(bytes.NewReader(c.Body()))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "cannot parse JSON",
+			"error": err.Error(),
 		})
 	}
 
